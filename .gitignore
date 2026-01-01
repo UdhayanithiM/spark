@@ -1,0 +1,21 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+# Ignore video files in the raw resource folder
+/app/src/main/res/raw/*.mp4
+/app/src/main/res/raw/*.mov
+/app/src/main/res/raw/*.avi
+/app/src/main/res/raw/*.mkv
+/app/src/main/res/raw/*.webm
