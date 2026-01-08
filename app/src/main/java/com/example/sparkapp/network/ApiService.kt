@@ -29,6 +29,7 @@ interface ApiService {
     @POST("score.php")
     suspend fun submitPreTestScore(@Body data: Map<String, @JvmSuppressWildcards Any>): Response<Map<String, String>>
 
+    // ⚠️ FIX: Returns SendMessageResponse (contains status), not MessageResponse
     @POST("send.php")
     suspend fun sendMessage(@Body request: SendMessageRequest): Response<SendMessageResponse>
 
@@ -57,20 +58,19 @@ interface ApiService {
     @POST("save_suggestion.php")
     suspend fun saveSuggestion(@Body data: Map<String, String>): Response<Map<String, String>>
 
-    // --- Chat (UPDATED) ---
-    // We made parameters nullable strings to support different polling types
+    // --- Chat ---
+    // ⚠️ FIX: Returns List<MessageResponse> (no status field inside list items)
     @GET("get_message.php")
     suspend fun getMessages(
         @Query("sender_id") senderId: String?,
         @Query("receiver_id") receiverId: String?,
-        @Query("referral_id") referralId: String? // <-- Added this
+        @Query("referral_id") referralId: String?
     ): Response<List<MessageResponse>>
 
     // --- New Counselor Features ---
     @GET("get_counselors.php")
     suspend fun getCounselors(): Response<List<CounselorProfile>>
 
-    // Add this to your ApiService interface
     @GET("get_my_referrals.php")
     suspend fun getMyReferrals(@Query("counselor_id") id: String): Response<List<ReferralResponse>>
 

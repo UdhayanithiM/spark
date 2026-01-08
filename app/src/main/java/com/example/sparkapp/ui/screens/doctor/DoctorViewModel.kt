@@ -120,21 +120,22 @@ class DoctorViewModel : ViewModel() {
     fun sendStudentMessage(
         referralId: String,
         text: String,
-        doctorId: String,
-        counselorId: String
+        doctorId: String,    // "11" for loki
+        counselorId: String  // "12" for lalith
     ) {
         if (text.isBlank()) return
 
         viewModelScope.launch {
             try {
                 val request = SendMessageRequest(
-                    senderId = doctorId,
-                    receiverId = counselorId,
+                    senderId = doctorId,         // "11"
+                    receiverId = counselorId,    // "12"
                     message = text,
                     referralId = referralId
                 )
                 apiService.sendMessage(request)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

@@ -2,7 +2,6 @@ package com.example.sparkapp.ui.screens.doctor
 
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,7 +27,7 @@ fun DoctorStudentDetailScreen(
     onNavigateBack: () -> Unit,
     viewModel: DoctorViewModel = viewModel()
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Student Info", "Chat")
 
     LaunchedEffect(student.id) {
@@ -135,8 +134,11 @@ fun StudentChatTab(student: ReferralResponse, viewModel: DoctorViewModel) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("SparkAppPrefs", Context.MODE_PRIVATE)
 
+    // 1. Get Logged in Doctor ID
     val doctorId = prefs.getString("user_id", "0") ?: "0"
-    val counselorId = prefs.getString("counselor_id", "0") ?: "0"
+
+    // 2. ✅ FIX: Get Counselor ID from the Student Object, NOT SharedPreferences
+    val counselorId = student.counselorId ?: "0"
 
     var messageText by remember { mutableStateOf("") }
     val messages = viewModel.currentStudentMessages
@@ -144,14 +146,29 @@ fun StudentChatTab(student: ReferralResponse, viewModel: DoctorViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
 
         LazyColumn(
-            modifier = Modifier.weight(1f).padding(8.dp)
+            modifier = Modifier.weight(1f).padding(8.dp),
+            reverseLayout = false
         ) {
             items(messages) { msg ->
                 val isMe = msg.senderId == doctorId
-                Text(
-                    msg.message ?: "",
-                    color = if (isMe) MaterialTheme.colorScheme.primary else Color.Black
-                )
+
+                // Align messages right for me (Doctor), left for them (Counselor)
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isMe) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        modifier = Modifier.padding(4.dp).widthIn(max = 280.dp)
+                    ) {
+                        Text(
+                            text = msg.message ?: "",
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -162,7 +179,8 @@ fun StudentChatTab(student: ReferralResponse, viewModel: DoctorViewModel) {
             OutlinedTextField(
                 value = messageText,
                 onValueChange = { messageText = it },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Type a message...") }
             )
 
             IconButton(onClick = {
@@ -171,7 +189,7 @@ fun StudentChatTab(student: ReferralResponse, viewModel: DoctorViewModel) {
                         referralId = student.id,
                         text = messageText,
                         doctorId = doctorId,
-                        counselorId = counselorId
+                        counselorId = counselorId // ✅ Sends to the correct Counselor now
                     )
                     messageText = ""
                 }

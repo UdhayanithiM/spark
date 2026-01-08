@@ -73,23 +73,7 @@ class CounselorViewModel : ViewModel() {
     }
 
     // [FIX] Chat Polling (Same as Doctor)
-    fun startChatPolling(referralId: String) {
-        chatPollingJob?.cancel()
-        chatPollingJob = viewModelScope.launch(Dispatchers.IO) {
-            while (isActive) {
-                try {
-                    val response = apiService.getMessages(null, null, referralId)
-                    if (response.isSuccessful) {
-                        val newMsgs = response.body() ?: emptyList()
-                        if (newMsgs != currentMessages) currentMessages = newMsgs
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-                delay(2000)
-            }
-        }
-    }
+
 
     fun stopChatPolling() {
         chatPollingJob?.cancel()
@@ -98,6 +82,40 @@ class CounselorViewModel : ViewModel() {
     }
 
     // [FIX] Send Message
+    fun startChatPolling(referralId: String) {
+        println("🟢 Starting chat polling for referral: $referralId")
+
+        chatPollingJob?.cancel()
+        chatPollingJob = viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                try {
+                    println("🔵 Polling messages for referral: $referralId")
+
+                    val response = apiService.getMessages(null, null, referralId)
+
+                    println("🔵 Response code: ${response.code()}")
+                    println("🔵 Response body: ${response.body()}")
+
+                    if (response.isSuccessful) {
+                        val newMsgs = response.body() ?: emptyList()
+                        println("🔵 Received ${newMsgs.size} messages")
+
+                        if (newMsgs != currentMessages) {
+                            currentMessages = newMsgs
+                            println("✅ Messages updated!")
+                        }
+                    } else {
+                        println("🔴 Error response: ${response.errorBody()?.string()}")
+                    }
+                } catch (e: Exception) {
+                    println("🔴 Exception: ${e.message}")
+                    e.printStackTrace()
+                }
+                delay(2000)
+            }
+        }
+    }
+
     fun sendMessage(
         counselorId: String,
         referralId: String,
@@ -105,14 +123,36 @@ class CounselorViewModel : ViewModel() {
     ) {
         if (text.isBlank()) return
 
+        println("🟢 Sending message:")
+        println("   Sender: $counselorId")
+        println("   Referral: $referralId")
+        println("   Message: $text")
+
         viewModelScope.launch {
-            val request = SendMessageRequest(
-                senderId = counselorId,
-                receiverId = "1",   // ✅ DOCTOR ID
-                message = text,
-                referralId = referralId
-            )
-            apiService.sendMessage(request)
+            try {
+                val request = SendMessageRequest(
+                    senderId = counselorId,
+                    receiverId = "11",  // loki
+                    message = text,
+                    referralId = referralId
+                )
+
+                println("🔵 Request: $request")
+
+                val response = apiService.sendMessage(request)
+
+                println("🔵 Send response: ${response.code()}")
+                println("🔵 Response body: ${response.body()}")
+
+                if (response.isSuccessful && response.body()?.status == "success") {
+                    println("✅ Message sent successfully!")
+                } else {
+                    println("🔴 Send failed: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                println("🔴 Send error: ${e.message}")
+                e.printStackTrace()
+            }
         }
     }
 }
