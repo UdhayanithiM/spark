@@ -1,6 +1,7 @@
 package com.example.sparkapp.ui.screens.counselor
 
 import android.app.Application
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -8,13 +9,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sparkapp.network.ApiService
 import com.example.sparkapp.network.RetrofitClient
-import com.example.sparkapp.ui.screens.login.DataStoreViewModel // Now this import works
+import com.example.sparkapp.ui.screens.login.DataStoreViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-// Data class to hold the profile state
 data class ProfileUiState(
     val name: String = "",
     val email: String = "",
@@ -30,19 +30,32 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         private set
 
     private val apiService: ApiService = RetrofitClient.instance
-    private val dataStore = DataStoreViewModel(application) // This now compiles
+    private val dataStore = DataStoreViewModel(application)
 
     private val _navigationEvent = MutableSharedFlow<String>()
     val navigationEvent = _navigationEvent.asSharedFlow()
 
     init {
+        loadUserProfile()
+    }
+
+    private fun loadUserProfile() {
         viewModelScope.launch {
-            val userEmail = dataStore.userEmail.first() // This now compiles
-            if (userEmail != null) {
+            Log.d("ProfileDebug", "Loading user profile...")
+
+            // 1. Get Email from DataStore
+            val userEmail = dataStore.userEmail.first()
+            Log.d("ProfileDebug", "Email found in DataStore: $userEmail")
+
+            if (!userEmail.isNullOrEmpty()) {
                 uiState = uiState.copy(email = userEmail)
                 fetchProfile(userEmail)
             } else {
-                uiState = uiState.copy(isLoading = false, snackbarMessage = "User email not found.")
+                Log.e("ProfileDebug", "No email found! User needs to login.")
+                uiState = uiState.copy(
+                    isLoading = false,
+                    snackbarMessage = "User not found. Please Logout and Login again."
+                )
             }
         }
     }
@@ -51,20 +64,35 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true)
             try {
+                Log.d("ProfileDebug", "Fetching API for: $email")
                 val response = apiService.getProfile(email)
+
+                Log.d("ProfileDebug", "API Response Code: ${response.code()}")
+
                 if (response.isSuccessful && response.body()?.status == "success") {
                     val profileData = response.body()?.data
+                    Log.d("ProfileDebug", "API Success. Data: $profileData")
+
                     uiState = uiState.copy(
-                        // FIX: Safely cast 'Any?' to String
-                        name = profileData?.name as? String ?: "",
-                        phone = profileData?.phone as? String ?: "",
+                        name = profileData?.name ?: "",
+                        email = profileData?.email ?: email,
+                        phone = profileData?.phone ?: "",
                         isLoading = false
                     )
                 } else {
-                    uiState = uiState.copy(snackbarMessage = "Failed to load profile", isLoading = false)
+                    Log.e("ProfileDebug", "API Failed or Status Error: ${response.message()}")
+                    uiState = uiState.copy(
+                        snackbarMessage = "Failed to load profile",
+                        isLoading = false
+                    )
                 }
             } catch (e: Exception) {
-                uiState = uiState.copy(snackbarMessage = "Error: ${e.message}", isLoading = false)
+                Log.e("ProfileDebug", "Exception: ${e.message}")
+                e.printStackTrace()
+                uiState = uiState.copy(
+                    snackbarMessage = "Connection error: ${e.message}",
+                    isLoading = false
+                )
             }
         }
     }
@@ -99,7 +127,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     uiState = uiState.copy(
                         isLoading = false,
                         isEditing = false,
-                        snackbarMessage = response.body()?.get("message") ?: "Profile Updated!"
+                        snackbarMessage = response.body()?.get("message") ?: "Updated!"
                     )
                 } else {
                     uiState = uiState.copy(isLoading = false, snackbarMessage = "Update failed")
@@ -112,7 +140,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun logout() {
         viewModelScope.launch {
-            dataStore.clearUserLogin() // This now compiles
+            dataStore.clearUserLogin()
             _navigationEvent.emit("logout")
         }
     }

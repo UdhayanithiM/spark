@@ -145,23 +145,20 @@ class DoctorViewModel : ViewModel() {
     // ------------------------------------
     fun submitSuggestion(
         referralId: String,
-        text: String,
+        suggestion: String,
+        precautions: String, // <-- Added parameter
         onResult: (Boolean) -> Unit
     ) {
-        if (text.isBlank()) {
-            onResult(false)
-            return
-        }
-
         viewModelScope.launch {
             try {
                 val body = mapOf(
                     "referral_id" to referralId,
-                    "doctor_suggestion" to text
+                    "doctor_suggestion" to suggestion,
+                    "precautions" to precautions // <-- Added field
                 )
                 val response = apiService.saveSuggestion(body)
                 if (response.isSuccessful) {
-                    fetchReferrals()
+                    fetchReferrals() // Refresh list to show saved data
                     onResult(true)
                 } else {
                     onResult(false)

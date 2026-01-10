@@ -19,6 +19,7 @@ import com.example.sparkapp.ui.screens.counselor.CounselorStudentDetailScreen
 import com.example.sparkapp.ui.screens.doctor.*
 import com.example.sparkapp.ui.screens.history.ScoreDetailScreen
 import com.example.sparkapp.ui.screens.login.LoginScreen
+import com.example.sparkapp.ui.screens.login.ForgotPasswordScreen
 import com.example.sparkapp.ui.screens.module.FullScreenPlayerScreen
 import com.example.sparkapp.ui.screens.module.ModuleScreen
 import com.example.sparkapp.ui.screens.parent.ParentDashboardScreen
@@ -39,6 +40,7 @@ object AppRoutes {
     const val SPLASH = "splash"
     const val LOGIN = "login"
     const val SIGNUP = "signup"
+    const val FORGOT_PASSWORD = "forgot_password"
 
     const val DOCTOR_HOME = "doctorDashboard"
     const val COUNSELOR_HOME = "counselorDashboard"
@@ -82,6 +84,9 @@ fun MainNavigation() {
 
         composable(AppRoutes.SIGNUP) {
             SignUpScreen(navController)
+        }
+        composable(AppRoutes.FORGOT_PASSWORD) {
+            ForgotPasswordScreen(navController = navController)
         }
 
         // ---------- COUNSELOR ----------

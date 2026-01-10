@@ -12,40 +12,33 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.IOException
 
-// This data class holds the state for ALL fields
+// Updated State: Removed Student-specific fields for Parent Signup
 data class SignUpUiState(
     val selectedRole: String = "Doctor",
     val roleOptions: List<String> = listOf("Doctor", "Counselor", "Parent"),
     val isLoading: Boolean = false,
 
-    // Common
+    // Common Fields
     val name: String = "",
     val email: String = "",
     val password: String = "",
     val phone: String = "",
 
-    // Counselor & Parent
-    val age: String = "", // For Counselor OR Parent
+    // Counselor & Parent Specifics
+    val age: String = "",
     val qualification: String = "",
 
-    // Counselor only
+    // Counselor Only
     val school: String = "",
     val yearInSchool: String = "",
 
-    // Parent only
+    // Parent Only (Personal Info)
     val fatherOcc: String = "",
     val motherOcc: String = "",
     val fatherPhone: String = "",
-    val motherPhone: String = "",
-
-    // Parent's Student only
-    val studentName: String = "",
-    val standard: String = "",
-    val studentAge: String = "", // Fixed: Separate age field for student
-    val registerNumber: String = ""
+    val motherPhone: String = ""
 )
 
-// One-time events
 sealed class SignUpUiEvent {
     data class SignUpSuccess(val message: String) : SignUpUiEvent()
     data class ShowError(val message: String) : SignUpUiEvent()
@@ -59,7 +52,7 @@ class SignUpViewModel : ViewModel() {
     private val _uiEvent = MutableSharedFlow<SignUpUiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
 
-    // --- Event Handlers for all fields ---
+    // --- Event Handlers ---
     fun onRoleChanged(role: String) { uiState = uiState.copy(selectedRole = role) }
     fun onNameChanged(name: String) { uiState = uiState.copy(name = name) }
     fun onEmailChanged(email: String) { uiState = uiState.copy(email = email) }
@@ -67,28 +60,24 @@ class SignUpViewModel : ViewModel() {
     fun onPhoneChanged(phone: String) { uiState = uiState.copy(phone = phone) }
     fun onAgeChanged(age: String) { uiState = uiState.copy(age = age) }
     fun onQualificationChanged(q: String) { uiState = uiState.copy(qualification = q) }
+
+    // Counselor Fields
     fun onSchoolChanged(school: String) { uiState = uiState.copy(school = school) }
     fun onYearInSchoolChanged(year: String) { uiState = uiState.copy(yearInSchool = year) }
+
+    // Parent Fields
     fun onFatherOccChanged(occ: String) { uiState = uiState.copy(fatherOcc = occ) }
     fun onMotherOccChanged(occ: String) { uiState = uiState.copy(motherOcc = occ) }
     fun onFatherPhoneChanged(phone: String) { uiState = uiState.copy(fatherPhone = phone) }
     fun onMotherPhoneChanged(phone: String) { uiState = uiState.copy(motherPhone = phone) }
-    fun onStudentNameChanged(name: String) { uiState = uiState.copy(studentName = name) }
-    fun onStandardChanged(std: String) { uiState = uiState.copy(standard = std) }
-    fun onStudentAgeChanged(age: String) { uiState = uiState.copy(studentAge = age) } // Fixed
-    fun onRegisterNumberChanged(reg: String) { uiState = uiState.copy(registerNumber = reg) }
 
-    // --- This is your '_submitSignup()' function ---
     fun onSignUpClicked() {
         if (uiState.isLoading) return
         uiState = uiState.copy(isLoading = true)
 
         viewModelScope.launch {
             try {
-                // 1. Build the data map (this is your 'Map<String, dynamic> data')
                 val data = buildDataMap()
-
-                // 2. Make the API call
                 val response = RetrofitClient.instance.signup(data)
 
                 if (response.isSuccessful && response.body() != null) {
@@ -103,24 +92,21 @@ class SignUpViewModel : ViewModel() {
                 }
 
             } catch (e: IOException) {
-                Log.e("SignUpViewModel", "Network error: ${e.message}")
-                _uiEvent.emit(SignUpUiEvent.ShowError("⚠️ Error connecting to server: ${e.message}"))
+                _uiEvent.emit(SignUpUiEvent.ShowError("⚠️ Connection error: ${e.message}"))
             } catch (e: Exception) {
-                Log.e("SignUpViewModel", "Unknown error: ${e.message}")
-                _uiEvent.emit(SignUpUiEvent.ShowError("An unknown error occurred."))
+                _uiEvent.emit(SignUpUiEvent.ShowError("Error: ${e.message}"))
             } finally {
                 uiState = uiState.copy(isLoading = false)
             }
         }
     }
 
-    // This function replicates your logic for building the data map
     private fun buildDataMap(): Map<String, Any> {
         val data = mutableMapOf<String, Any>(
             "role" to uiState.selectedRole,
             "name" to uiState.name.trim(),
             "email" to uiState.email.trim(),
-            "password" to uiState.password.trim(), // Note: Sending plaintext, as per Flutter app
+            "password" to uiState.password.trim(),
             "phone" to uiState.phone.trim()
         )
 
@@ -132,20 +118,15 @@ class SignUpViewModel : ViewModel() {
                 data["year_in_school"] = uiState.yearInSchool.trim()
             }
             "Parent" -> {
-                data["age"] = uiState.age.trim() // Parent's Age
+                data["age"] = uiState.age.trim()
                 data["qualification"] = uiState.qualification.trim()
                 data["father_occ"] = uiState.fatherOcc.trim()
                 data["mother_occ"] = uiState.motherOcc.trim()
                 data["father_phone"] = uiState.fatherPhone.trim()
                 data["mother_phone"] = uiState.motherPhone.trim()
-                data["student_name"] = uiState.studentName.trim()
-                data["standard"] = uiState.standard.trim()
-                // Note: The original Flutter app has a bug where it doesn't send student_age.
-                // We are sending it here. Your PHP script already accepts it.
-                data["student_age"] = uiState.studentAge.trim()
-                data["register_number"] = uiState.registerNumber.trim()
+                // Removed student details from here
             }
         }
-        return data.filterValues { (it as? String)?.isNotEmpty() ?: true } // Remove empty strings
+        return data.filterValues { (it as? String)?.isNotEmpty() ?: true }
     }
 }

@@ -9,6 +9,13 @@ interface ApiService {
     @POST("login.php")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
+    // --- Forgot Password ---
+    @POST("forgot_password.php")
+    suspend fun resetPassword(@Body data: Map<String, String>): Response<Map<String, String>>
+    // --- Parent Search ---
+    @POST("parent_search.php")
+    suspend fun searchStudent(@Body request: Map<String, String>): Response<ParentSearchResponse>
+
     @POST("signup.php")
     suspend fun signup(@Body data: Map<String, @JvmSuppressWildcards Any>): Response<Map<String, String>>
 

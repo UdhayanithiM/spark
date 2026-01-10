@@ -7,18 +7,25 @@ data class ReferralResponse(
     @Json(name = "id") val id: String,
     @Json(name = "name") val name: String?,
     @Json(name = "age") val age: String?,
+    @Json(name = "unique_id") val uniqueId: String?,
     @Json(name = "gender") val gender: String?,
     @Json(name = "standard") val standard: String?,
     @Json(name = "address") val address: String?,
     @Json(name = "disciplinary") val disciplinary: String?,
     @Json(name = "special_need") val specialNeed: String?,
     @Json(name = "doctor_suggestion") val doctorSuggestion: String?,
+    @Json(name = "precautions") val precautions: String?,
     @Json(name = "reason") val reason: String?,
     @Json(name = "behavior") val behavior: String?,
     @Json(name = "academic") val academic: String?,
     @Json(name = "counselor_id") val counselorId: String?
 )
 
+data class ParentSearchResponse(
+    @com.squareup.moshi.Json(name = "status") val status: String,
+    @com.squareup.moshi.Json(name = "message") val message: String?,
+    @com.squareup.moshi.Json(name = "data") val data: ReferralResponse?
+)
 // 2. Scoreboard Response
 data class ScoreboardResponse(
     @Json(name = "id") val id: String,
@@ -31,19 +38,17 @@ data class ScoreboardResponse(
     @Json(name = "score") val score: String?
 )
 
-// 3. Message Response (Used for Fetching Chat History)
-// ⚠️ FIX: Removed 'status' and 'message_id' because get_message.php does not send them.
+// 3. Message Response (UPDATED with timestamp)
 data class MessageResponse(
     @Json(name = "id") val id: String,
     @Json(name = "sender_id") val senderId: String?,
     @Json(name = "receiver_id") val receiverId: String?,
     @Json(name = "message") val message: String?,
     @Json(name = "referral_id") val referralId: String?,
-    @Json(name = "timestamp") val timestamp: String?
+    @Json(name = "timestamp") val timestamp: String? // <-- ADDED THIS
 )
 
 // 4. Send Message Request
-// ⚠️ FIX: Removed 'field:' to ensure keys like "sender_id" are sent correctly.
 data class SendMessageRequest(
     @Json(name = "sender_id") val senderId: String,
     @Json(name = "receiver_id") val receiverId: String,
@@ -51,7 +56,7 @@ data class SendMessageRequest(
     @Json(name = "referral_id") val referralId: String
 )
 
-// 5. Send Message Response (Used for the result of Sending)
+// 5. Send Message Response
 data class SendMessageResponse(
     @Json(name = "status") val status: String,
     @Json(name = "message_id") val messageId: Int?

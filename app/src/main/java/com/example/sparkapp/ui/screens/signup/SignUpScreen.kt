@@ -1,7 +1,6 @@
 package com.example.sparkapp.ui.screens.signup
 
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp // <-- THIS IMPORT WAS MISSING
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.sparkapp.ui.components.CommonTextField
@@ -32,14 +32,11 @@ fun SignUpScreen(
     val uiState = viewModel.uiState
     val context = LocalContext.current
 
-    // Listen for events from ViewModel
     LaunchedEffect(key1 = true) {
         viewModel.uiEvent.collectLatest { event ->
             when (event) {
                 is SignUpUiEvent.SignUpSuccess -> {
-                    // Show success message
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                    // Navigate back to Login screen
                     navController.popBackStack()
                 }
                 is SignUpUiEvent.ShowError -> {
@@ -51,14 +48,14 @@ fun SignUpScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("SIGN UP") },
+            CenterAlignedTopAppBar(
+                title = { Text("Create Account") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = SparkAppPurple,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
@@ -66,7 +63,6 @@ fun SignUpScreen(
             )
         }
     ) { paddingValues ->
-        // This is your Form(child: ListView(...))
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -75,55 +71,59 @@ fun SignUpScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Role selector
+            // Role Dropdown
             RoleDropdown(
                 selectedRole = uiState.selectedRole,
                 options = uiState.roleOptions,
                 onRoleSelected = { viewModel.onRoleChanged(it) }
             )
 
-            // Name field (common for all)
+            Spacer(Modifier.height(16.dp))
+
+            // Common Name Field
             CommonTextField(
                 value = uiState.name,
                 onValueChange = { viewModel.onNameChanged(it) },
-                label = "Name"
+                label = "Full Name"
             )
 
-            // Fields based on selected role
+            // Dynamic Fields based on Role
             when (uiState.selectedRole) {
                 "Doctor" -> DoctorFields(uiState, viewModel)
                 "Counselor" -> CounselorFields(uiState, viewModel)
                 "Parent" -> ParentFields(uiState, viewModel)
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // Sign up Button
+            // Sign Up Button
             Button(
                 onClick = { viewModel.onSignUpClicked() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SparkAppPurple),
-                enabled = !uiState.isLoading
+                enabled = !uiState.isLoading,
+                shape = MaterialTheme.shapes.medium
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("SIGN UP", fontWeight = FontWeight.Bold)
+                    Text("REGISTER", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 }
             }
         }
     }
 }
 
-// This is your 'buildDoctorFields()'
+// --- Field Composables ---
+
 @Composable
 fun DoctorFields(uiState: SignUpUiState, viewModel: SignUpViewModel) {
     CommonTextField(
         value = uiState.email,
         onValueChange = { viewModel.onEmailChanged(it) },
-        label = "Email"
+        label = "Email Address"
     )
     CommonTextField(
         value = uiState.password,
@@ -134,13 +134,28 @@ fun DoctorFields(uiState: SignUpUiState, viewModel: SignUpViewModel) {
     CommonTextField(
         value = uiState.phone,
         onValueChange = { viewModel.onPhoneChanged(it) },
-        label = "Phone number"
+        label = "Phone Number"
     )
 }
 
-// This is your 'buildCounselorFields()'
 @Composable
 fun CounselorFields(uiState: SignUpUiState, viewModel: SignUpViewModel) {
+    CommonTextField(
+        value = uiState.email,
+        onValueChange = { viewModel.onEmailChanged(it) },
+        label = "Email Address"
+    )
+    CommonTextField(
+        value = uiState.password,
+        onValueChange = { viewModel.onPasswordChanged(it) },
+        label = "Password",
+        isPassword = true
+    )
+    CommonTextField(
+        value = uiState.phone,
+        onValueChange = { viewModel.onPhoneChanged(it) },
+        label = "Phone Number"
+    )
     CommonTextField(
         value = uiState.age,
         onValueChange = { viewModel.onAgeChanged(it) },
@@ -154,17 +169,22 @@ fun CounselorFields(uiState: SignUpUiState, viewModel: SignUpViewModel) {
     CommonTextField(
         value = uiState.school,
         onValueChange = { viewModel.onSchoolChanged(it) },
-        label = "School"
+        label = "School Name"
     )
     CommonTextField(
         value = uiState.yearInSchool,
         onValueChange = { viewModel.onYearInSchoolChanged(it) },
-        label = "Year in current school"
+        label = "Year in Current School"
     )
+}
+
+@Composable
+fun ParentFields(uiState: SignUpUiState, viewModel: SignUpViewModel) {
+    // --- Account Info ---
     CommonTextField(
-        value = uiState.phone,
-        onValueChange = { viewModel.onPhoneChanged(it) },
-        label = "Phone number"
+        value = uiState.email,
+        onValueChange = { viewModel.onEmailChanged(it) },
+        label = "Email Address"
     )
     CommonTextField(
         value = uiState.password,
@@ -172,30 +192,29 @@ fun CounselorFields(uiState: SignUpUiState, viewModel: SignUpViewModel) {
         label = "Password",
         isPassword = true
     )
-    CommonTextField(
-        value = uiState.email,
-        onValueChange = { viewModel.onEmailChanged(it) },
-        label = "Email"
-    )
-}
 
-// This is your 'buildParentFields()'
-@Composable
-fun ParentFields(uiState: SignUpUiState, viewModel: SignUpViewModel) {
+    // --- Personal Info ---
     CommonTextField(
         value = uiState.age,
         onValueChange = { viewModel.onAgeChanged(it) },
-        label = "Age" // Parent's Age
+        label = "Parent Age"
     )
     CommonTextField(
         value = uiState.qualification,
         onValueChange = { viewModel.onQualificationChanged(it) },
-        label = "Qualification"
+        label = "Education/Qualification"
     )
+
+    // --- Family Details ---
     CommonTextField(
         value = uiState.fatherOcc,
         onValueChange = { viewModel.onFatherOccChanged(it) },
         label = "Father's Occupation"
+    )
+    CommonTextField(
+        value = uiState.fatherPhone,
+        onValueChange = { viewModel.onFatherPhoneChanged(it) },
+        label = "Father's Contact Number"
     )
     CommonTextField(
         value = uiState.motherOcc,
@@ -203,58 +222,12 @@ fun ParentFields(uiState: SignUpUiState, viewModel: SignUpViewModel) {
         label = "Mother's Occupation"
     )
     CommonTextField(
-        value = uiState.fatherPhone,
-        onValueChange = { viewModel.onFatherPhoneChanged(it) },
-        label = "Father's Phone number"
-    )
-    CommonTextField(
         value = uiState.motherPhone,
         onValueChange = { viewModel.onMotherPhoneChanged(it) },
-        label = "Mother's Phone number"
+        label = "Mother's Contact Number"
     )
-    CommonTextField(
-        value = uiState.email,
-        onValueChange = { viewModel.onEmailChanged(it) },
-        label = "Email"
-    )
-    CommonTextField(
-        value = uiState.password,
-        onValueChange = { viewModel.onPasswordChanged(it) },
-        label = "Password",
-        isPassword = true
-    )
-
-    Spacer(Modifier.height(10.dp))
-
-    // This is your 'Container' with the light blue background
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = Color(0xFFE8ECF8), // Your Color(0xFFE8ECF8)
-                shape = MaterialTheme.shapes.medium
-            )
-            .padding(12.dp)
-    ) {
-        CommonTextField(
-            value = uiState.studentName,
-            onValueChange = { viewModel.onStudentNameChanged(it) },
-            label = "Student Name"
-        )
-        CommonTextField(
-            value = uiState.standard,
-            onValueChange = { viewModel.onStandardChanged(it) },
-            label = "Standard"
-        )
-        CommonTextField(
-            value = uiState.studentAge, // Using the new 'studentAge' state
-            onValueChange = { viewModel.onStudentAgeChanged(it) },
-            label = "Age" // Student's Age
-        )
-        CommonTextField(
-            value = uiState.registerNumber,
-            onValueChange = { viewModel.onRegisterNumberChanged(it) },
-            label = "Register number"
-        )
-    }
 }
+
+
+
+

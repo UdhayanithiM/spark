@@ -8,56 +8,103 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sparkapp.network.ApiService
 import com.example.sparkapp.network.ParentDetails
+import com.example.sparkapp.network.ReferralResponse
 import com.example.sparkapp.network.RetrofitClient
-// import com.example.sparkapp.ui.screens.login.DataStoreViewModel // <-- REMOVED UNUSED IMPORT
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-data class ParentProfileUiState(
+// State for the Dashboard
+data class ParentDashboardState(
+    val uniqueIdInput: String = "",
+    val studentData: ReferralResponse? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
+// State for the Profile Screen (UPDATED with error field)
+data class ParentProfileState(
     val details: ParentDetails? = null,
     val isLoading: Boolean = true,
-    val errorMessage: String? = null
+    val error: String? = null
 )
 
 class ParentViewModel(application: Application) : AndroidViewModel(application) {
 
-    var uiState by mutableStateOf(ParentProfileUiState())
+    private val apiService: ApiService = RetrofitClient.instance
+
+    // --- Dashboard State ---
+    var dashboardState by mutableStateOf(ParentDashboardState())
         private set
 
-    private val apiService: ApiService = RetrofitClient.instance
-    // private val dataStore = DataStoreViewModel(application) // <-- REMOVED UNUSED VARIABLE
+    // --- Profile State ---
+    var profileState by mutableStateOf(ParentProfileState())
+        private set
 
-    init {
-        fetchParentDetails()
+    // 1. Dashboard Functions
+    fun onUniqueIdChange(newId: String) {
+        dashboardState = dashboardState.copy(uniqueIdInput = newId)
     }
 
-    private fun fetchParentDetails() {
+    fun searchStudent() {
+        if (dashboardState.uniqueIdInput.isBlank()) {
+            dashboardState = dashboardState.copy(error = "Please enter a Student ID")
+            return
+        }
+
         viewModelScope.launch {
-            uiState = uiState.copy(isLoading = true)
-
-            // FIXME: This is hardcoded to match the Flutter code's bug.
-            // This should use the logged-in parent's ID from DataStore.
-            // val parentId = dataStore.userId.first() ?: 0
-            val parentId = 10 // Hardcoded from StudentDetailsPage.dart, line 157
-
+            dashboardState = dashboardState.copy(isLoading = true, error = null, studentData = null)
             try {
-                val response = apiService.getParentProfile(mapOf("id" to parentId))
+                val request = mapOf("unique_id" to dashboardState.uniqueIdInput.trim())
+                val response = apiService.searchStudent(request)
+
                 if (response.isSuccessful && response.body()?.status == "success") {
-                    uiState = uiState.copy(
-                        details = response.body()?.parentDetails,
-                        isLoading = false
+                    dashboardState = dashboardState.copy(
+                        isLoading = false,
+                        studentData = response.body()?.data
                     )
                 } else {
-                    val error = response.body()?.message ?: "Failed to load profile"
-                    uiState = uiState.copy(isLoading = false, errorMessage = error)
+                    dashboardState = dashboardState.copy(
+                        isLoading = false,
+                        error = response.body()?.message ?: "Student not found"
+                    )
                 }
             } catch (e: Exception) {
-                uiState = uiState.copy(isLoading = false, errorMessage = e.message)
+                dashboardState = dashboardState.copy(isLoading = false, error = "Connection error: ${e.message}")
             }
         }
     }
 
-    fun clearError() {
-        uiState = uiState.copy(errorMessage = null)
+    // 2. Profile Functions
+    fun fetchParentProfile() {
+        viewModelScope.launch {
+            // Reset state to loading
+            profileState = profileState.copy(isLoading = true, error = null)
+
+            // Hardcoded ID for testing (replace with dynamic ID in production)
+            val hardcodedParentId = 10
+
+            try {
+                val response = apiService.getParentProfile(mapOf("id" to hardcodedParentId))
+                if (response.isSuccessful && response.body()?.status == "success") {
+                    profileState = profileState.copy(
+                        isLoading = false,
+                        details = response.body()?.parentDetails
+                    )
+                } else {
+                    profileState = profileState.copy(
+                        isLoading = false,
+                        error = response.body()?.message ?: "Failed to load profile"
+                    )
+                }
+            } catch (e: Exception) {
+                profileState = profileState.copy(
+                    isLoading = false,
+                    error = "Connection error: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun clearProfileError() {
+        profileState = profileState.copy(error = null)
     }
 }

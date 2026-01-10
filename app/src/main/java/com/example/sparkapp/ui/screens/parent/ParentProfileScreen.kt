@@ -15,7 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle // <-- 1. ADD THIS IMPORT
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,14 +28,21 @@ fun ParentProfileScreen(
     onNavigateBack: () -> Unit,
     viewModel: ParentViewModel = viewModel()
 ) {
-    val uiState = viewModel.uiState
+    // 1. Fetch Profile Data when screen opens
+    LaunchedEffect(Unit) {
+        viewModel.fetchParentProfile()
+    }
+
+    // 2. Use the correct state variable 'profileState'
+    val uiState = viewModel.profileState
     val context = LocalContext.current
     val deepPurple = Color(0xFF673AB7)
 
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-            viewModel.clearError()
+    // 3. Handle Errors
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { errorMsg ->
+            Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+            viewModel.clearProfileError()
         }
     }
 
@@ -61,7 +68,7 @@ fun ParentProfileScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = deepPurple)
             }
         } else if (uiState.details != null) {
             val details = uiState.details
@@ -72,7 +79,6 @@ fun ParentProfileScreen(
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // This section replicates the buildDetailRow widgets
                 DetailRow(label = "Name", value = details.name)
                 DetailRow(label = "Father's Occupation", value = details.fatherOccupation)
                 DetailRow(label = "Mother's Occupation", value = details.motherOccupation)
@@ -82,23 +88,29 @@ fun ParentProfileScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Edit Button (Disabled, matches Flutter logic)
                 Button(
-                    onClick = { /* onPressed: () {} */ },
+                    onClick = { /* No action defined yet */ },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = deepPurple),
-                    enabled = false // Matches Flutter's empty onPressed
+                    enabled = false // Kept disabled as per original code
                 ) {
                     Text("Edit")
                 }
+            }
+        } else {
+            // Fallback if details are null and not loading
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No profile data available.")
             }
         }
     }
 }
 
-// This is the Kotlin version of the buildDetailRow helper function
 @Composable
 private fun DetailRow(label: String, value: String?) {
     Card(
@@ -106,7 +118,7 @@ private fun DetailRow(label: String, value: String?) {
             .fillMaxWidth()
             .padding(bottom = 12.dp),
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color(0xFF673AB7)), // deepPurple
+        border = BorderStroke(1.dp, Color(0xFF673AB7)),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Row(
@@ -114,13 +126,11 @@ private fun DetailRow(label: String, value: String?) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "$label: ",
-                // 2. ADD 'TextStyle'
+                text = "$label: ",
                 style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp)
             )
             Text(
-                value ?: "N/A",
-                // 3. ADD 'TextStyle'
+                text = value ?: "N/A",
                 style = TextStyle(fontSize = 16.sp, color = Color.Black.copy(alpha = 0.87f))
             )
         }

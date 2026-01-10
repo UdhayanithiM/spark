@@ -3,7 +3,7 @@ package com.example.sparkapp.ui.screens.counselor
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Assignment // New Icon
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.PersonOutline
@@ -20,16 +20,16 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.sparkapp.ui.theme.SparkAppPurple
 
-// --- UPDATED TABS ---
+// --- SCREEN DEFINITIONS ---
 sealed class CounselorScreen(val route: String, val label: String, val icon: ImageVector) {
     object Home : CounselorScreen("counselor_home_content", "Home", Icons.Default.Home)
-    object Status : CounselorScreen("referral_status", "Referrals", Icons.Default.Assignment) // <-- NEW TAB
+    object Status : CounselorScreen("referral_status", "Referrals", Icons.Default.Assignment)
     object Profile : CounselorScreen("counselor_profile", "Profile", Icons.Default.PersonOutline)
 }
 
 val counselorBottomNavItems = listOf(
     CounselorScreen.Home,
-    CounselorScreen.Status, // <-- REPLACED HISTORY & CHAT
+    CounselorScreen.Status,
     CounselorScreen.Profile
 )
 
@@ -37,7 +37,7 @@ val counselorBottomNavItems = listOf(
 @Composable
 fun CounselorDashboardScreen(
     mainNavController: NavController,
-    userId: String, // <-- REQUIRED: PASSED FROM LOGIN/MAINNAV
+    userId: String,
     onLogout: () -> Unit
 ) {
     val tabNavController = rememberNavController()
@@ -84,8 +84,9 @@ fun CounselorDashboardScreen(
                         ),
                         onClick = {
                             tabNavController.navigate(screen.route) {
-                                popUpTo(tabNavController.graph.startDestinationId)
+                                popUpTo(tabNavController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
+                                restoreState = true
                             }
                         }
                     )
@@ -101,7 +102,6 @@ fun CounselorDashboardScreen(
             composable(CounselorScreen.Home.route) {
                 CounselorHomeScreen(mainNavController = mainNavController)
             }
-            // --- NEW SCREEN ---
             composable(CounselorScreen.Status.route) {
                 ReferralStatusScreen(
                     counselorId = userId,

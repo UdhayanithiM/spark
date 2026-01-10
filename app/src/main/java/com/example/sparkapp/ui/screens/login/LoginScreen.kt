@@ -4,11 +4,16 @@ import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,8 +25,10 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.sparkapp.AppRoutes
@@ -32,48 +39,48 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun LoginScreen(
     navController: NavController,
-    loginViewModel: LoginViewModel = viewModel() // This creates the ViewModel
+    loginViewModel: LoginViewModel = viewModel()
 ) {
     val uiState = loginViewModel.uiState
     val context = LocalContext.current
+    var passwordVisible by remember { mutableStateOf(false) }
 
-    // This block listens for one-time events from the ViewModel
     LaunchedEffect(key1 = true) {
         loginViewModel.uiEvent.collectLatest { event ->
             when (event) {
-                // --- THIS IS THE FIX ---
                 is LoginUiEvent.LoginSuccess -> {
-                    // Navigate to the correct dashboard based on role
                     val route = when (event.role) {
-                        // Use the event.userId to build the correct route
                         "Counselor" -> "${AppRoutes.COUNSELOR_HOME}/${event.userId}"
                         "Doctor" -> AppRoutes.DOCTOR_HOME
                         "Parent" -> AppRoutes.PARENT_HOME
-                        else -> AppRoutes.LOGIN // Fallback
+                        else -> AppRoutes.LOGIN
                     }
                     navController.navigate(route) {
                         popUpTo(AppRoutes.SPLASH) { inclusive = true }
                     }
                 }
                 is LoginUiEvent.ShowError -> {
-                    // This is your '_showMessage(msg)'
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
-    // This is your Flutter Scaffold
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("LOGIN") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Welcome Back",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) { // Your 'Navigator.pop(context)'
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = SparkAppPurple,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
@@ -81,88 +88,141 @@ fun LoginScreen(
             )
         }
     ) { paddingValues ->
-        // This is your ListView
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(horizontal = 24.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(40.dp))
 
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = "Login Icon",
-                modifier = Modifier.size(60.dp),
-                tint = Color.Black
+            // Professional Header Icon
+            Surface(
+                shape = RoundedCornerShape(100.dp),
+                color = SparkAppPurple.copy(alpha = 0.1f),
+                modifier = Modifier.size(100.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Login Icon",
+                        modifier = Modifier.size(50.dp),
+                        tint = SparkAppPurple
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+
+            // Role Selection
+            Text(
+                text = "Select Your Role",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Gray,
+                modifier = Modifier.align(Alignment.Start)
             )
-
-            Spacer(Modifier.height(16.dp))
-
-            // This is your DropdownButtonFormField
+            Spacer(Modifier.height(8.dp))
             RoleDropdown(
                 selectedRole = uiState.selectedRole,
                 options = uiState.roleOptions,
                 onRoleSelected = { loginViewModel.onRoleChanged(it) }
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
-            // This is your Email TextField
+            // Email Field
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = { loginViewModel.onEmailChanged(it) },
-                label = { Text("Email") },
+                label = { Text("Email Address") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = SparkAppPurple,
+                    focusedLabelColor = SparkAppPurple
+                )
             )
 
             Spacer(Modifier.height(16.dp))
 
-            // This is your Password TextField
+            // Password Field
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = { loginViewModel.onPasswordChanged(it) },
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                trailingIcon = {
+                    val image = if (passwordVisible)
+                        Icons.Filled.Visibility
+                    else
+                        Icons.Filled.VisibilityOff
+
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = if (passwordVisible) "Hide password" else "Show password")
+                    }
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = SparkAppPurple,
+                    focusedLabelColor = SparkAppPurple
+                )
             )
 
+            // Forgot Password Link
             Spacer(Modifier.height(8.dp))
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                TextButton(onClick = { navController.navigate(AppRoutes.FORGOT_PASSWORD) }) {
+                    Text(
+                        "Forgot Password?",
+                        color = SparkAppPurple,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
 
-            // This is your Login Button
+            Spacer(Modifier.height(24.dp))
+
+            // Login Button
             Button(
                 onClick = { loginViewModel.onLoginClicked(context) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SparkAppPurple),
-                enabled = !uiState.isLoading // Disable button when loading
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                enabled = !uiState.isLoading
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
                         color = Color.White,
                         modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
+                        strokeWidth = 2.5.dp
                     )
                 } else {
-                    Text("LOGIN", fontWeight = FontWeight.Bold)
+                    Text("LOGIN", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // This is your "Sign up" link
+            // Sign Up Link
             SignUpLink(
                 onSignUpClicked = {
-                    navController.navigate(AppRoutes.SIGNUP) // Your 'Navigator.pushNamed(context, '/signup')'
+                    navController.navigate(AppRoutes.SIGNUP)
                 }
             )
+
+            Spacer(Modifier.height(20.dp))
         }
     }
 }
@@ -188,7 +248,12 @@ fun RoleDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor()
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = SparkAppPurple,
+                focusedLabelColor = SparkAppPurple
+            )
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -200,7 +265,8 @@ fun RoleDropdown(
                     onClick = {
                         onRoleSelected(role)
                         expanded = false
-                    }
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                 )
             }
         }
@@ -209,14 +275,14 @@ fun RoleDropdown(
 
 @Composable
 fun SignUpLink(onSignUpClicked: () -> Unit) {
-    // This builds the "Don't have an account? Sign up" text
     Text(
         text = buildAnnotatedString {
             append("Don't have an account? ")
-            withStyle(style = SpanStyle(color = Color.Red, fontWeight = FontWeight.Bold)) {
+            withStyle(style = SpanStyle(color = SparkAppPurple, fontWeight = FontWeight.Bold)) {
                 append("Sign up")
             }
         },
-        modifier = Modifier.clickable { onSignUpClicked() }
+        modifier = Modifier.clickable { onSignUpClicked() },
+        style = MaterialTheme.typography.bodyMedium
     )
 }

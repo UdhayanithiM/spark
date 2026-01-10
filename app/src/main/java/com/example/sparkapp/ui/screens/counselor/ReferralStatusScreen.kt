@@ -7,8 +7,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,9 +26,10 @@ import java.net.URLEncoder
 @Composable
 fun ReferralStatusScreen(
     counselorId: String,
-    mainNavController: NavController, // Use main controller to navigate to full detail page
+    mainNavController: NavController,
     viewModel: CounselorViewModel = viewModel()
 ) {
+    // Fetch referrals when screen loads
     LaunchedEffect(counselorId) {
         viewModel.fetchMyReferrals(counselorId)
     }
@@ -56,9 +55,10 @@ fun ReferralStatusScreen(
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(viewModel.myReferrals) { student ->
                     ReferralStatusCard(student) {
-                        // Navigate to Detail Screen
+                        // Serialize student object to pass to detail screen
                         val json = Gson().toJson(student)
                         val encodedJson = URLEncoder.encode(json, "UTF-8")
+                        // Ensure this route matches your MainNavigation
                         mainNavController.navigate("counselor_student_detail/$encodedJson")
                     }
                 }
@@ -72,12 +72,14 @@ fun ReferralStatusCard(student: ReferralResponse, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         elevation = CardDefaults.cardElevation(3.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Avatar
             Box(
                 modifier = Modifier
                     .size(50.dp)
@@ -86,44 +88,38 @@ fun ReferralStatusCard(student: ReferralResponse, onClick: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    student.name?.first()?.uppercase() ?: "?",
+                    text = student.name?.firstOrNull()?.toString()?.uppercase() ?: "?",
                     color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
+
+            // Info
             Column(modifier = Modifier.weight(1f)) {
                 Text(student.name ?: "Unknown", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("Reason: ${student.reason ?: "N/A"}", fontSize = 14.sp, maxLines = 1)
+                Text(
+                    text = "Reason: ${student.reason ?: "N/A"}",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    maxLines = 1
+                )
             }
 
-            // Status Indicator (If doctor suggestion exists, show "Replied")
-            if (!student.doctorSuggestion.isNullOrEmpty()) {
-                Surface(
-                    color = Color(0xFFE8F5E9),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        "Replied",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = Color(0xFF2E7D32),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            } else {
-                Surface(
-                    color = Color(0xFFFFF3E0),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        "Pending",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = Color(0xFFEF6C00),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            // Status Badge
+            val hasReplied = !student.doctorSuggestion.isNullOrEmpty()
+            Surface(
+                color = if (hasReplied) Color(0xFFE8F5E9) else Color(0xFFFFF3E0),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = if (hasReplied) "Replied" else "Pending",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    color = if (hasReplied) Color(0xFF2E7D32) else Color(0xFFEF6C00),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

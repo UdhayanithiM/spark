@@ -3,7 +3,7 @@ package com.example.sparkapp.ui.screens.referral
 import android.app.Application
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.AndroidViewModel // Changed from ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sparkapp.network.ReferralRequest
 import com.example.sparkapp.network.RetrofitClient
@@ -13,10 +13,10 @@ import kotlinx.coroutines.launch
 
 enum class SubmissionStatus { IDLE, LOADING, SUCCESS, ERROR }
 
-// Changed to AndroidViewModel to access Application Context
 class ReferralViewModel(application: Application) : AndroidViewModel(application) {
 
     // State for all text fields
+    val uniqueId = mutableStateOf("") // <-- NEW
     val name = mutableStateOf("")
     val age = mutableStateOf("")
     val standard = mutableStateOf("")
@@ -31,17 +31,19 @@ class ReferralViewModel(application: Application) : AndroidViewModel(application
     val submissionStatus: StateFlow<SubmissionStatus> = _submissionStatus
 
     fun sendReferral() {
+        // Validate Unique ID is present
+        if (uniqueId.value.isBlank()) return
+
         viewModelScope.launch {
             _submissionStatus.value = SubmissionStatus.LOADING
             try {
-                // 1. Get the current Counselor's ID from SharedPreferences
                 val context = getApplication<Application>().applicationContext
                 val prefs = context.getSharedPreferences("SparkAppPrefs", Context.MODE_PRIVATE)
                 val currentUserId = prefs.getString("user_id", "0") ?: "0"
 
-                // 2. Pass it to the request
                 val request = ReferralRequest(
-                    counselorId = currentUserId, // <--- FIXED: Passing the ID here
+                    counselorId = currentUserId,
+                    uniqueId = uniqueId.value.trim(), // <-- Pass Unique ID
                     name = name.value.trim(),
                     age = age.value.trim().toIntOrNull() ?: 0,
                     standard = standard.value.trim(),
@@ -68,6 +70,7 @@ class ReferralViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun clearFields() {
+        uniqueId.value = "" // <-- Clear
         name.value = ""
         age.value = ""
         standard.value = ""
