@@ -1,18 +1,26 @@
 package com.example.sparkapp.ui.screens.posttest
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-// Import from OUTLINED, which you added in Step 1
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Quiz
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -20,19 +28,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle // Import for TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-// --- Import AppRoutes ---
 import com.example.sparkapp.AppRoutes
 import com.example.sparkapp.data.PostTestQuestion
-import com.example.sparkapp.ui.theme.ButtonColor // Import for ButtonColor
+import com.example.sparkapp.ui.theme.ButtonColor
 import kotlinx.coroutines.launch
+
+// Define Theme Colors locally for consistency
+private val PrimaryColor = ButtonColor // Using your existing ButtonColor
+private val BackgroundGray = Color(0xFFF5F7FA)
+private val CorrectGreen = Color(0xFF4CAF50)
+private val WrongRed = Color(0xFFE53935)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,58 +55,61 @@ fun PostTestScreen(navController: NavController) {
     val submissionStatus by viewModel.submissionStatus.collectAsState()
 
     // Handle Submission Dialogs
-    when (submissionStatus) {
-        SubmissionStatus.LOADING -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        }
-        SubmissionStatus.SUCCESS -> {
-            AlertDialog(
-                onDismissRequest = { /* Disallow dismissing */ },
-                title = { Text("Success") },
-                text = { Text("Post-test submitted successfully!") },
-                confirmButton = {
-                    TextButton(onClick = {
+    if (submissionStatus == SubmissionStatus.LOADING) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Submitting") },
+            text = {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PrimaryColor)
+                }
+            },
+            confirmButton = {}
+        )
+    } else if (submissionStatus == SubmissionStatus.SUCCESS) {
+        AlertDialog(
+            onDismissRequest = { /* Disallow dismissing */ },
+            title = { Text("Success") },
+            text = { Text("Post-test submitted successfully!") },
+            confirmButton = {
+                Button(
+                    onClick = {
                         viewModel.resetSubmissionStatus()
-                        // --- Build the correct route with the userId ---
                         val route = "${AppRoutes.COUNSELOR_HOME}/${viewModel.userId}"
                         navController.navigate(route) {
                             popUpTo(route) { inclusive = true }
                         }
-                    }) { Text("OK") }
-                }
-            )
-        }
-        SubmissionStatus.ERROR -> {
-            AlertDialog(
-                onDismissRequest = { viewModel.resetSubmissionStatus() },
-                title = { Text("Error") },
-                text = { Text("Failed to submit. Please try again.") },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.resetSubmissionStatus() }) { Text("OK") }
-                }
-            )
-        }
-        SubmissionStatus.IDLE -> {}
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
+                ) { Text("OK") }
+            }
+        )
+    } else if (submissionStatus == SubmissionStatus.ERROR) {
+        AlertDialog(
+            onDismissRequest = { viewModel.resetSubmissionStatus() },
+            title = { Text("Error") },
+            text = { Text("Failed to submit. Please try again.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.resetSubmissionStatus() }) { Text("OK") }
+            }
+        )
     }
 
     Scaffold(
+        containerColor = BackgroundGray,
         topBar = {
-            TopAppBar(
-                title = { Text("Post-Test") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ButtonColor,
+            CenterAlignedTopAppBar(
+                title = { Text("Post-Test Assessment", fontWeight = FontWeight.SemiBold) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = PrimaryColor,
                     titleContentColor = Color.White
                 )
             )
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            // This `when` statement replicates the Flutter `Builder`
             when (testStatus) {
                 TestStatus.LOADING -> LoadingScreen()
-                // --- Pass the viewModel to CompletedScreen ---
                 TestStatus.COMPLETED -> CompletedScreen(navController, viewModel)
                 TestStatus.ERROR -> ErrorScreen(onRetry = { viewModel.checkTestStatus() })
                 TestStatus.NOT_COMPLETED -> QuizPager(viewModel)
@@ -105,99 +121,71 @@ fun PostTestScreen(navController: NavController) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun QuizPager(viewModel: PostTestViewModel) {
-    // ... (This function is correct, no changes needed) ...
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
 
-    HorizontalPager(
-        state = pagerState,
-        userScrollEnabled = false // Replicates NeverScrollableScrollPhysics
-    ) { page ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            if (page == 0) {
-                // Page 1: Section 1
-                item {
-                    Text(
-                        "Section 1: Knowledge",
-                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp),
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-                itemsIndexed(viewModel.section1) { index, question ->
-                    val globalIndex = viewModel.questions.indexOf(question)
-                    QuestionCard(
-                        question = question,
-                        selectedOption = viewModel.selectedOptions[globalIndex],
-                        onOptionSelected = { optionIndex ->
-                            viewModel.onOptionSelected(globalIndex, optionIndex)
-                        }
-                    )
-                }
-                item {
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Button(
-                        onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = ButtonColor)
-                    ) {
-                        Text("Next")
+    Column(modifier = Modifier.fillMaxSize()) {
+        // --- Progress Indicator ---
+        LinearProgressIndicator(
+            progress = { if (pagerState.currentPage == 0) 0.5f else 1.0f },
+            modifier = Modifier.fillMaxWidth().height(4.dp),
+            color = PrimaryColor,
+            trackColor = Color.LightGray.copy(alpha = 0.5f),
+        )
+
+        HorizontalPager(
+            state = pagerState,
+            userScrollEnabled = false,
+            modifier = Modifier.weight(1f)
+        ) { page ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                if (page == 0) {
+                    // --- Page 1 ---
+                    item { SectionHeader("Section 1: Knowledge") }
+                    itemsIndexed(viewModel.section1) { _, question ->
+                        val globalIndex = viewModel.questions.indexOf(question)
+                        QuestionCard(
+                            question = question,
+                            selectedOption = viewModel.selectedOptions[globalIndex],
+                            onOptionSelected = { viewModel.onOptionSelected(globalIndex, it) }
+                        )
                     }
-                    Spacer(modifier = Modifier.height(20.dp))
-                }
-            } else {
-                // Page 2: Section 2 & 3
-                item {
-                    Text(
-                        "Section 2: Attitude",
-                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp),
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-                itemsIndexed(viewModel.section2) { index, question ->
-                    val globalIndex = viewModel.questions.indexOf(question)
-                    QuestionCard(
-                        question = question,
-                        selectedOption = viewModel.selectedOptions[globalIndex],
-                        onOptionSelected = { optionIndex ->
-                            viewModel.onOptionSelected(globalIndex, optionIndex)
+                    item {
+                        NavigationButton(text = "Next Section") {
+                            scope.launch { pagerState.animateScrollToPage(1) }
                         }
-                    )
-                }
-                item {
-                    Text(
-                        "Section 3: Practice",
-                        style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp),
-                        modifier = Modifier.padding(top = 20.dp, bottom = 16.dp)
-                    )
-                }
-                itemsIndexed(viewModel.section3) { index, question ->
-                    val globalIndex = viewModel.questions.indexOf(question)
-                    QuestionCard(
-                        question = question,
-                        selectedOption = viewModel.selectedOptions[globalIndex],
-                        onOptionSelected = { optionIndex ->
-                            viewModel.onOptionSelected(globalIndex, optionIndex)
-                        }
-                    )
-                }
-                item {
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Button(
-                        onClick = { viewModel.submitPostTest() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = ButtonColor)
-                    ) {
-                        Text("Submit")
                     }
-                    Spacer(modifier = Modifier.height(20.dp))
+                } else {
+                    // --- Page 2 ---
+                    item { SectionHeader("Section 2: Attitude") }
+                    itemsIndexed(viewModel.section2) { _, question ->
+                        val globalIndex = viewModel.questions.indexOf(question)
+                        QuestionCard(
+                            question = question,
+                            selectedOption = viewModel.selectedOptions[globalIndex],
+                            onOptionSelected = { viewModel.onOptionSelected(globalIndex, it) }
+                        )
+                    }
+
+                    item { SectionHeader("Section 3: Practice") }
+                    itemsIndexed(viewModel.section3) { _, question ->
+                        val globalIndex = viewModel.questions.indexOf(question)
+                        QuestionCard(
+                            question = question,
+                            selectedOption = viewModel.selectedOptions[globalIndex],
+                            onOptionSelected = { viewModel.onOptionSelected(globalIndex, it) }
+                        )
+                    }
+
+                    item {
+                        NavigationButton(text = "Submit Assessment") {
+                            viewModel.submitPostTest()
+                        }
+                    }
                 }
             }
         }
@@ -210,113 +198,165 @@ private fun QuestionCard(
     selectedOption: Int?,
     onOptionSelected: (Int) -> Unit
 ) {
-    // ... (This function is correct, no changes needed) ...
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 16.dp),
-        elevation = CardDefaults.cardElevation(2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = question.questionText,
-                style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Question Text
+            Row(verticalAlignment = Alignment.Top) {
+                Icon(
+                    imageVector = Icons.Outlined.Quiz,
+                    contentDescription = null,
+                    tint = PrimaryColor,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = question.questionText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+            }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Options
             question.options.forEachIndexed { index, option ->
                 val isSelected = selectedOption == index
                 val isCorrect = question.answerIndex == index
 
-                val backgroundColor = when {
-                    isSelected && isCorrect -> Color.Green.copy(alpha = 0.2f)
-                    isSelected && !isCorrect -> Color.Red.copy(alpha = 0.2f)
-                    else -> Color.White
-                }
+                // Determine Visual State
+                val showResult = selectedOption != null // Only show green/red if user clicked something
 
-                // Use if/else for Kotlin
-                val borderColor = if (isSelected) {
-                    if (isCorrect) Color.Green else Color.Red
-                } else {
-                    Color.Black.copy(alpha = 0.5f)
-                }
+                // Logic:
+                // 1. If I selected this, and it's correct -> Green
+                // 2. If I selected this, and it's wrong -> Red
+                // 3. (Optional) If I selected WRONG, highlight the CORRECT one -> Green (Optional UX)
 
-                Card(
+                val borderColor by animateColorAsState(
+                    targetValue = if (isSelected) {
+                        if (isCorrect) CorrectGreen else WrongRed
+                    } else Color.LightGray.copy(alpha = 0.5f),
+                    animationSpec = tween(300)
+                )
+
+                val backgroundColor by animateColorAsState(
+                    targetValue = if (isSelected) {
+                        if (isCorrect) CorrectGreen.copy(alpha = 0.1f) else WrongRed.copy(alpha = 0.1f)
+                    } else Color.Transparent,
+                    animationSpec = tween(300)
+                )
+
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .clickable { onOptionSelected(index) },
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, borderColor),
-                    colors = CardDefaults.cardColors(containerColor = backgroundColor)
+                        .padding(vertical = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(enabled = selectedOption == null) { // Disable change after selection? Or keep enabled
+                            onOptionSelected(index)
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.5.dp, borderColor),
+                    color = backgroundColor
                 ) {
-                    Text(
-                        text = option,
-                        modifier = Modifier.padding(12.dp)
-                    )
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Radio/Status Icon
+                        if (isSelected) {
+                            if (isCorrect) {
+                                Icon(Icons.Default.CheckCircle, null, tint = CorrectGreen)
+                            } else {
+                                Icon(Icons.Default.Close, null, tint = WrongRed)
+                            }
+                        } else {
+                            // Empty Radio Circle
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .border(1.5.dp, Color.Gray, CircleShape)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Text(
+                            text = option,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+// --- Status Screens ---
+
 @Composable
 private fun LoadingScreen() {
-    // ... (This function is correct, no changes needed) ...
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(20.dp))
-            Text("Checking test status...", style = TextStyle(fontSize = 16.sp))
+            CircularProgressIndicator(color = PrimaryColor)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Checking status...", color = Color.Gray)
         }
     }
 }
 
 @Composable
-private fun CompletedScreen(
-    navController: NavController,
-    // --- Accept the viewModel to get the userId ---
-    viewModel: PostTestViewModel
-) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(20.dp)
+private fun CompletedScreen(navController: NavController, viewModel: PostTestViewModel) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(4.dp),
+            shape = RoundedCornerShape(24.dp)
         ) {
-            Icon(
-                Icons.Outlined.CheckCircleOutline, // Use Icons.Outlined
-                contentDescription = "Completed",
-                modifier = Modifier.size(80.dp),
-                tint = Color.Green // Use Color.Green
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-            Text(
-                "Test Already Completed",
-                style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                "You have already submitted your post-test.",
-                style = TextStyle(fontSize = 16.sp),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(30.dp))
-            Button(
-                onClick = {
-                    // --- Build the correct route with the userId ---
-                    val route = "${AppRoutes.COUNSELOR_HOME}/${viewModel.userId}"
-                    navController.navigate(route) {
-                        popUpTo(route) { inclusive = true }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ButtonColor)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(40.dp)
             ) {
-                Text("Go Back Home", style = TextStyle(fontSize = 18.sp))
+                Icon(
+                    Icons.Outlined.CheckCircleOutline,
+                    contentDescription = null,
+                    modifier = Modifier.size(100.dp),
+                    tint = CorrectGreen
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    "Assessment Complete",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "You have successfully submitted your post-test.",
+                    textAlign = TextAlign.Center,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = {
+                        val route = "${AppRoutes.COUNSELOR_HOME}/${viewModel.userId}"
+                        navController.navigate(route) { popUpTo(route) { inclusive = true } }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Return to Dashboard", fontSize = 16.sp)
+                }
             }
         }
     }
@@ -324,39 +364,62 @@ private fun CompletedScreen(
 
 @Composable
 private fun ErrorScreen(onRetry: () -> Unit) {
-    // ... (This function is correct, no changes needed) ...
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(20.dp)
-        ) {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                Icons.Outlined.ErrorOutline, // Use Icons.Outlined
-                contentDescription = "Error",
+                Icons.Outlined.ErrorOutline,
+                contentDescription = null,
                 modifier = Modifier.size(80.dp),
-                tint = Color.Red // Use Color.Red
+                tint = WrongRed
             )
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "Error",
-                style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold),
-                textAlign = TextAlign.Center
+                "Connection Error",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
             Text(
-                "Could not verify your test status. Please check your internet connection and try again.",
-                style = TextStyle(fontSize = 16.sp),
-                textAlign = TextAlign.Center
+                "Unable to verify test status.",
+                color = Color.Gray
             )
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = onRetry,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ButtonColor)
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
             ) {
-                Text("Try Again", style = TextStyle(fontSize = 18.sp))
+                Text("Try Again")
             }
         }
+    }
+}
+
+// --- Helpers ---
+
+@Composable
+fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = PrimaryColor,
+        modifier = Modifier.padding(vertical = 8.dp)
+    )
+}
+
+@Composable
+fun NavigationButton(text: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor),
+        shape = RoundedCornerShape(12.dp),
+        elevation = ButtonDefaults.buttonElevation(4.dp)
+    ) {
+        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }

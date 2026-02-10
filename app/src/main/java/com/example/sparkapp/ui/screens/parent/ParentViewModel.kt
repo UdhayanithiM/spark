@@ -1,6 +1,8 @@
 package com.example.sparkapp.ui.screens.parent
 
 import android.app.Application
+import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -17,10 +19,11 @@ data class ParentDashboardState(
     val uniqueIdInput: String = "",
     val studentData: ReferralResponse? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isStudentFixed: Boolean = false
 )
 
-// State for the Profile Screen (UPDATED with error field)
+// State for the Profile Screen
 data class ParentProfileState(
     val details: ParentDetails? = null,
     val isLoading: Boolean = true,
@@ -31,68 +34,120 @@ class ParentViewModel(application: Application) : AndroidViewModel(application) 
 
     private val apiService: ApiService = RetrofitClient.instance
 
-    // --- Dashboard State ---
+    // 1. Prefs for local settings (Student Persistence)
+    private val prefs = application.getSharedPreferences("SparkParentPrefs", Context.MODE_PRIVATE)
+
+    // 2. Prefs for Authentication (Where Login stores 'user_id')
+    private val authPrefs = application.getSharedPreferences("SparkAppPrefs", Context.MODE_PRIVATE)
+
     var dashboardState by mutableStateOf(ParentDashboardState())
         private set
 
-    // --- Profile State ---
     var profileState by mutableStateOf(ParentProfileState())
         private set
 
-    // 1. Dashboard Functions
+    init {
+        checkSavedStudent()
+    }
+
+    // --- Dashboard Logic ---
+
+    private fun checkSavedStudent() {
+        val savedId = prefs.getString("saved_student_id", null)
+        if (!savedId.isNullOrEmpty()) {
+            dashboardState = dashboardState.copy(uniqueIdInput = savedId)
+            searchStudent(isAutoLoad = true)
+        }
+    }
+
     fun onUniqueIdChange(newId: String) {
         dashboardState = dashboardState.copy(uniqueIdInput = newId)
     }
 
-    fun searchStudent() {
-        if (dashboardState.uniqueIdInput.isBlank()) {
+    fun searchStudent(isAutoLoad: Boolean = false) {
+        val idToSearch = dashboardState.uniqueIdInput.trim()
+
+        if (idToSearch.isBlank()) {
             dashboardState = dashboardState.copy(error = "Please enter a Student ID")
             return
         }
 
         viewModelScope.launch {
-            dashboardState = dashboardState.copy(isLoading = true, error = null, studentData = null)
+            dashboardState = dashboardState.copy(isLoading = true, error = null)
             try {
-                val request = mapOf("unique_id" to dashboardState.uniqueIdInput.trim())
+                val request = mapOf("unique_id" to idToSearch)
                 val response = apiService.searchStudent(request)
 
                 if (response.isSuccessful && response.body()?.status == "success") {
+                    if (!isAutoLoad) {
+                        prefs.edit().putString("saved_student_id", idToSearch).apply()
+                    }
+
                     dashboardState = dashboardState.copy(
                         isLoading = false,
-                        studentData = response.body()?.data
+                        studentData = response.body()?.data,
+                        isStudentFixed = true
                     )
                 } else {
                     dashboardState = dashboardState.copy(
                         isLoading = false,
-                        error = response.body()?.message ?: "Student not found"
+                        error = response.body()?.message ?: "Student not found",
+                        isStudentFixed = false
                     )
                 }
             } catch (e: Exception) {
-                dashboardState = dashboardState.copy(isLoading = false, error = "Connection error: ${e.message}")
+                dashboardState = dashboardState.copy(
+                    isLoading = false,
+                    error = "Connection error: ${e.message}",
+                    isStudentFixed = false
+                )
             }
         }
     }
 
-    // 2. Profile Functions
+    fun logout() {
+        prefs.edit().remove("saved_student_id").apply()
+        dashboardState = ParentDashboardState()
+    }
+
+    // --- Profile Logic ---
+
     fun fetchParentProfile() {
         viewModelScope.launch {
-            // Reset state to loading
             profileState = profileState.copy(isLoading = true, error = null)
 
-            // Hardcoded ID for testing (replace with dynamic ID in production)
-            val hardcodedParentId = 10
+            // Safely get User ID
+            var userId = -1
+            if (authPrefs.contains("user_id")) {
+                try {
+                    userId = authPrefs.getInt("user_id", -1)
+                } catch (e: Exception) {
+                    userId = authPrefs.getString("user_id", "-1")?.toIntOrNull() ?: -1
+                }
+            }
+
+            if (userId == -1) {
+                profileState = profileState.copy(
+                    isLoading = false,
+                    error = "Session invalid (ID not found). Please logout and login."
+                )
+                return@launch
+            }
 
             try {
-                val response = apiService.getParentProfile(mapOf("id" to hardcodedParentId))
+                // Ensure this points to the correct endpoint in ApiService
+                val response = apiService.getParentProfile(mapOf("id" to userId))
+
                 if (response.isSuccessful && response.body()?.status == "success") {
                     profileState = profileState.copy(
                         isLoading = false,
                         details = response.body()?.parentDetails
                     )
                 } else {
+                    val msg = response.body()?.message ?: "Failed to load profile"
                     profileState = profileState.copy(
                         isLoading = false,
-                        error = response.body()?.message ?: "Failed to load profile"
+                        error = msg
                     )
                 }
             } catch (e: Exception) {

@@ -3,7 +3,7 @@ package com.example.sparkapp.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // Your app's custom purple color
-val SparkAppPurple = Color(0xFF6A5AE0)
+val SparkAppPurple = Color(0xFF03A9F4)
 
 // Default theme colors (we can adjust these later)
 val Purple80 = Color(0xFFD0BCFF)

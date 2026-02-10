@@ -8,7 +8,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 object RetrofitClient {
 
     // Your IP address from the previous step
-    private const val BASE_URL = "http://10.114.111.149/doctor/"
+    private const val BASE_URL = "http://192.168.1.14/doctor/"
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())

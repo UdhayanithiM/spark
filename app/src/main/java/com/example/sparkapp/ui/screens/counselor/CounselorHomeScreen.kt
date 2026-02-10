@@ -1,21 +1,20 @@
 package com.example.sparkapp.ui.screens.counselor
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -25,72 +24,126 @@ import androidx.navigation.NavController
 import com.example.sparkapp.AppRoutes
 import com.example.sparkapp.R
 
-// This is your 'HomePageContent' widget
+// Define Theme Colors
+private val PrimaryLightBlue = Color(0xFF03A9F4)
+private val BackgroundGray = Color(0xFFF5F7FA)
+
 @Composable
 fun CounselorHomeScreen(mainNavController: NavController) {
     Column(
         modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundGray)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        // --- THIS IS THE FIX ---
 
-        // 1. Learning Module card
-        Spacer(modifier = Modifier.height(20.dp))
+        // --- 1. Welcome Header ---
+        Text(
+            text = "Welcome Counselor,",
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.Gray
+        )
+        Text(
+            text = "What would you like to do?",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // --- 2. Learning Module Card ---
         HomeCard(
             title = "Learning Modules",
-            imageResId = R.drawable.card_learning_module,
+            subtitle = "Access training materials and guides",
+            imageResId = R.drawable.card_learning_module, // Ensure this drawable exists
             onClick = {
-                // This starts your 5-step flow by navigating to the Pre-Test
                 mainNavController.navigate(AppRoutes.PRE_TEST)
             }
         )
 
-        // 2. Referral card
         Spacer(modifier = Modifier.height(20.dp))
+
+        // --- 3. Referral Card ---
         HomeCard(
             title = "Create Referral",
-            imageResId = R.drawable.card_referral,
+            subtitle = "Submit a new student assessment",
+            imageResId = R.drawable.card_referral, // Ensure this drawable exists
             onClick = {
-                // This navigates to the referral form
                 mainNavController.navigate("create_referral")
             }
         )
 
-        // --- END OF FIX ---
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
-// This is the reusable Card UI
+// Modern Reusable Card
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeCard(
     imageResId: Int,
     title: String,
+    subtitle: String,
     onClick: () -> Unit
 ) {
     Card(
-        onClick = onClick, // This replaces GestureDetector
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = RoundedCornerShape(12.dp),
+        onClick = onClick,
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
-            Image(
-                painter = painterResource(id = imageResId),
-                contentDescription = title,
+            // Image Section
+            Box(modifier = Modifier.height(180.dp).fillMaxWidth()) {
+                Image(
+                    painter = painterResource(id = imageResId),
+                    contentDescription = title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            // Content Section
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                contentScale = ContentScale.Crop // This is your 'fit: BoxFit.cover'
-            )
-            Text(
-                text = title,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(12.dp)
-            )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = subtitle,
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                // Action Button (Visual cue)
+                Surface(
+                    shape = CircleShape,
+                    color = PrimaryLightBlue.copy(alpha = 0.1f),
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Go",
+                            tint = PrimaryLightBlue
+                        )
+                    }
+                }
+            }
         }
     }
 }

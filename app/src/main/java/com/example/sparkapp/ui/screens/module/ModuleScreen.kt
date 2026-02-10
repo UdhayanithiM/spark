@@ -1,21 +1,29 @@
 package com.example.sparkapp.ui.screens.module
 
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.PlayCircleFilled
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
@@ -23,6 +31,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import com.example.sparkapp.data.VideoItem
+
+// --- THEME COLORS ---
+private val PrimaryLightBlue = Color(0xFF03A9F4)
+private val BackgroundGray = Color(0xFFF5F7FA)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,56 +45,93 @@ fun ModuleScreen(
     val videos by viewModel.videos.collectAsState()
 
     Scaffold(
+        containerColor = BackgroundGray,
         topBar = {
-            TopAppBar(
-                title = { Text("Module") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Learning Modules",
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = PrimaryLightBlue
+                )
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-        ) {
-            // Display all 17 video items from the ViewModel
-            items(videos) { videoItem ->
-                VideoPlayerItem(
-                    videoItem = videoItem,
-                    onClick = {
-                        // Navigate to fullscreen player
-                        navController.navigate("fullscreen_player/${videoItem.videoResourceId}")
-                    }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+        Column(modifier = Modifier.padding(padding)) {
 
-            // Add the "Next" button at the end of the list
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        // This is where we will go next
-                        // We will create "scenario" in the next step
-                        navController.navigate("scenario")
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Next to Case Scenarios", style = MaterialTheme.typography.titleMedium)
+            // --- Course Progress Header (Visual only) ---
+            LinearProgressIndicator(
+                progress = { 0.1f }, // Example: 10% progress
+                modifier = Modifier.fillMaxWidth().height(4.dp),
+                color = PrimaryLightBlue,
+                trackColor = Color.LightGray.copy(alpha = 0.5f),
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // Intro Text
+                item {
+                    Text(
+                        "Available Videos",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.height(32.dp))
+
+                // Video List
+                items(videos) { videoItem ->
+                    VideoPlayerItem(
+                        videoItem = videoItem,
+                        onClick = {
+                            navController.navigate("fullscreen_player/${videoItem.videoResourceId}")
+                        }
+                    )
+                }
+
+                // Next Button Area
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = { navController.navigate("scenario") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryLightBlue),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = ButtonDefaults.buttonElevation(4.dp)
+                    ) {
+                        Text(
+                            "Proceed to Case Scenarios",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
+                    }
+                }
             }
         }
     }
 }
 
 /**
- * This is the UI for a single row in the list.
- * It shows the title and a non-playing video player that acts as a thumbnail.
+ * Modern Card for Video Items
  */
 @Composable
 private fun VideoPlayerItem(
@@ -90,64 +139,106 @@ private fun VideoPlayerItem(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val videoUri = Uri.parse("android.resource://${context.packageName}/${videoItem.videoResourceId}")
 
-    // Create an ExoPlayer instance just for this item
+    // Setup ExoPlayer (acts as thumbnail)
+    val videoUri = Uri.parse("android.resource://${context.packageName}/${videoItem.videoResourceId}")
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             val mediaItem = MediaItem.fromUri(videoUri)
             setMediaItem(mediaItem)
-            prepare() // Prepare but don't play
+            prepare()
+            volume = 0f // Mute thumbnail
         }
     }
 
-    // Release the player when the item leaves the screen
     DisposableEffect(Unit) {
-        onDispose {
-            exoPlayer.release()
-        }
+        onDispose { exoPlayer.release() }
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick) // Make the whole card clickable
-        ) {
-            // Video player UI
+        Column {
+            // Video Container
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp),
+                    .height(200.dp)
+                    .background(Color.Black), // Fallback background
                 contentAlignment = Alignment.Center
             ) {
+                // Player View
                 AndroidView(
                     factory = {
                         PlayerView(it).apply {
                             player = exoPlayer
-                            useController = false // Hide controls for thumbnail
+                            useController = false
+                            // Adjust resize mode if needed, e.g., AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                         }
                     },
                     modifier = Modifier.fillMaxSize()
                 )
-                // Play icon overlay, just like the Flutter app
+
+                // Dark Overlay for contrast
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f))
+                )
+
+                // Play Button Overlay
                 Icon(
-                    imageVector = Icons.Default.PlayCircleFilled,
+                    imageVector = Icons.Default.PlayCircle,
                     contentDescription = "Play",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(64.dp)
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(Color.Black.copy(alpha = 0.2f), CircleShape)
                 )
             }
 
-            // Title below the video
-            Text(
-                text = videoItem.title,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(16.dp)
-            )
+            // Text Content
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = videoItem.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Tap to watch full screen",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+
+                // "Watch" Badge
+                Surface(
+                    color = PrimaryLightBlue.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "Watch",
+                        color = PrimaryLightBlue,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
         }
     }
 }
